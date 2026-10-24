@@ -1,0 +1,353 @@
+<title>Atelier Visuels TV</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : régie TV, colonne de réglages à gauche, moniteur programme et conducteur à droite */
+:root {
+  --bg: #eef0f5; --surface: #ffffff; --sunken: #e3e6ee; --line: #d3d7e2;
+  --ink: #171a26; --muted: #5a6075; --accent: #e5484d; --accent-ink: #ffffff; --focus: #3d63dd;
+  --code-bg: #171a26; --code-fg: #e8eaf2; --code-muted: #8d93a8;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11131b; --surface: #1a1d28; --sunken: #232736; --line: #2e3345;
+  --ink: #eceef5; --muted: #9aa0b6; --accent: #ff6369; --accent-ink: #1a0a0b; --focus: #8aa4ff;
+  --code-bg: #0b0d13; --code-fg: #e8eaf2; --code-muted: #7d8399; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11131b; --surface: #1a1d28; --sunken: #232736; --line: #2e3345;
+  --ink: #eceef5; --muted: #9aa0b6; --accent: #ff6369; --accent-ink: #1a0a0b; --focus: #8aa4ff;
+  --code-bg: #0b0d13; --code-fg: #e8eaf2; --code-muted: #7d8399; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px }
+h1 { font: 700 clamp(26px, 4vw, 38px)/1.05 var(--display); letter-spacing: -0.02em; margin: 0; text-wrap: balance }
+.onair { display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); border: 1.5px solid var(--accent); border-radius: 4px; padding: 2px 7px; transform: translateY(-4px) }
+.onair::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent) }
+header p { margin: 0; color: var(--muted); flex-basis: 100%; max-width: 68ch }
+.grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr) } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 14px; min-width: 0 }
+.label { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted) }
+.field { display: grid; gap: 5px }
+.field label { font-weight: 600; font-size: 13px }
+select, input[type=text], input[type=number] { width: 100%; font: 14px var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; min-width: 0 }
+select:focus-visible, input:focus-visible, button:focus-visible, [role=tab]:focus-visible, .thumb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+.row { display: flex; gap: 8px; align-items: center }
+.row > * { min-width: 0 }
+button { font: 600 13px var(--body); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; cursor: pointer; white-space: nowrap }
+button:hover { border-color: var(--muted) }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px }
+.sw { display: grid; grid-template-columns: repeat(4, 9px); grid-template-rows: repeat(2, 9px); border-radius: 5px; overflow: hidden; border: 2px solid transparent; padding: 0; background: none; cursor: pointer }
+.sw[aria-pressed=true] { border-color: var(--ink) }
+.sw span { display: block }
+.sw.auto { width: 46px; height: 22px; grid-template-columns: none; grid-template-rows: none; font: 600 10px var(--mono); color: var(--muted); display: grid; place-items: center; background: var(--sunken); border-color: var(--line) }
+.sw.auto[aria-pressed=true] { border-color: var(--ink); color: var(--ink) }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { font: 500 12px var(--body); padding: 4px 9px; border-radius: 999px; background: var(--bg) }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0 }
+.main { display: grid; gap: 16px; min-width: 0 }
+.monitor { background: var(--code-bg); border-radius: var(--r); padding: 10px; display: grid; gap: 8px }
+.monitor-bar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font: 500 11px var(--mono); letter-spacing: .08em; color: var(--code-muted); text-transform: uppercase; padding: 0 2px }
+.monitor-bar b { color: var(--code-fg); font-weight: 500 }
+#preview { aspect-ratio: 16 / 9; max-width: 100%; border-radius: 6px; overflow: hidden; background: #000 }
+#preview svg { display: block; width: 100%; height: 100% }
+.actions { display: flex; flex-wrap: wrap; gap: 8px }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; align-items: start }
+@media (max-width: 1080px) { .cols { grid-template-columns: minmax(0, 1fr) } }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px }
+td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top }
+td:first-child { color: var(--muted); width: 34%; padding-right: 10px }
+td code, .mono { font: 12.5px var(--mono) }
+.off { color: var(--muted); font-style: italic }
+.pal { display: inline-flex; gap: 2px; vertical-align: -3px; margin-left: 6px }
+.pal i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12) }
+.tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--line) }
+[role=tab] { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 8px; color: var(--muted); font-weight: 600 }
+[role=tab][aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent) }
+.codebox { position: relative; background: var(--code-bg); border-radius: 8px; min-width: 0 }
+.codebox pre { margin: 0; padding: 14px; overflow: auto; max-height: 380px; color: var(--code-fg); font: 12.5px/1.6 var(--mono); white-space: pre; tab-size: 2 }
+.codebox .c { color: var(--code-muted) }
+.codebar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap }
+.codebar p { margin: 0 }
+.toggle { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted) }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px }
+.thumb { padding: 0; border: 2px solid transparent; border-radius: 7px; overflow: hidden; background: var(--sunken); display: grid; text-align: left; font: 500 11px var(--mono); color: var(--muted) }
+.thumb[aria-current=true] { border-color: var(--accent) }
+.thumb svg { display: block; width: 100%; height: auto; aspect-ratio: 16/9 }
+.thumb span { padding: 4px 7px; overflow: hidden; text-overflow: ellipsis }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; z-index: 20 }
+#pngOut { display: grid; gap: 8px }
+#pngOut img { width: 100%; border-radius: 6px; border: 1px solid var(--line) }
+footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
+@media (prefers-reduced-motion: no-preference) { #preview svg { animation: cut .25s ease-out } @keyframes cut { from { opacity: .4 } to { opacity: 1 } } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Atelier Visuels TV</h1><span class="onair">Antenne</span>
+    <p>Génère une illustration 16:9 de programme télé dans le style tv-programs, puis copie le code qui la reproduit ailleurs : page HTML, script Node, commande Audience Masters ou prompt d'IA.</p>
+  </header>
+
+  <div class="grid">
+    <aside class="panel" aria-label="Réglages">
+      <div class="field"><label for="genre">Genre</label><select id="genre"></select></div>
+      <div class="field"><label for="subgenre">Sous-genre</label><select id="subgenre"></select></div>
+      <div class="field">
+        <label for="seed">Graine</label>
+        <div class="row"><input id="seed" type="text" spellcheck="false" autocomplete="off"><button id="dice" title="Nouvelle graine au hasard">Au hasard</button></div>
+        <p class="hint">Même graine et mêmes options : même image. Une majuscule ou un espace change tout.</p>
+      </div>
+      <div class="field"><span class="label" id="palLabel">Palette</span><div class="swatches" id="palettes" role="group" aria-labelledby="palLabel"></div><p class="hint" id="palHint"></p></div>
+      <div class="field">
+        <label for="bg">Fond plein (hex, facultatif)</label>
+        <input id="bg" type="text" placeholder="ex. 101018" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="field"><label for="size">Largeur en px (facultatif)</label><input id="size" type="number" min="0" step="10" placeholder="SVG sans dimensions"></div>
+      <div class="field"><span class="label">Familles du Mode Carrière</span><div class="chips" id="career"></div></div>
+    </aside>
+
+    <main class="main">
+      <section class="monitor" aria-label="Aperçu">
+        <div class="monitor-bar"><span>PGM · <b id="mGenre"></b></span><span>graine <b id="mSeed"></b></span><span>320×180 · sol y=162</span></div>
+        <div id="preview"></div>
+      </section>
+      <div class="actions">
+        <button class="primary" id="copySvg">Copier le SVG</button>
+        <button id="makePng">Exporter en PNG</button>
+        <button id="copyLink">Copier la recette</button>
+      </div>
+      <div id="pngOut" hidden></div>
+
+      <div class="cols">
+        <section class="panel" aria-labelledby="tTitle">
+          <span class="label" id="tTitle">Conducteur du tirage</span>
+          <table id="trace"></table>
+        </section>
+        <section class="panel" aria-labelledby="cTitle" style="gap:10px">
+          <span class="label" id="cTitle">Code pour reproduire ce visuel</span>
+          <div class="tabs" role="tablist" id="tabs"></div>
+          <div class="codebar"><p class="hint" id="codeHint"></p><span id="codeExtra"></span></div>
+          <div class="codebox"><pre id="code" tabindex="0"></pre></div>
+          <div class="row"><button class="primary" id="copyCode">Copier ce code</button></div>
+        </section>
+      </div>
+
+      <section class="panel" aria-labelledby="vTitle">
+        <div class="codebar"><span class="label" id="vTitle">Variations : <span class="mono" id="vSeed"></span>-1 à -12</span><span class="hint">Identiques à <code class="mono">--variations 12</code>. Clique pour reprendre une graine.</span></div>
+        <div class="thumbs" id="thumbs"></div>
+      </section>
+
+      <footer>Ce moteur applique l'algorithme du guide : hachage FNV-1a, Mulberry32, tirage pondéré trié, filtre par tags, palette tirée sur <code class="mono">hash(graine|palette)</code>, compositions et transformations exactes. Les dessins sont recréés. Le code HTML et Node redonne ce visuel à l'octet près. Pour l'image exacte du jeu, utilise l'onglet Audience Masters avec <code class="mono">generate.mjs</code> ou <code class="mono">dist/tv-programs.bundle.js</code>.</footer>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script id="tvp-engine">
+/*__ENGINE__*/
+</script>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const ENGINE = $('tvp-engine').textContent.trim();
+  const GENRE_LABEL = { aventure: 'Aventure', jeu: 'Jeu', divertissement: 'Divertissement', telerealite: 'Téléréalité', dating: 'Dating', cuisine: 'Cuisine', talent: 'Télécrochet', policier: 'Policier', drame: 'Drame', sport: 'Sport', documentaire: 'Documentaire', magazine: 'Magazine', info: 'Info', humour: 'Humour', jeunesse: 'Jeunesse', cinema: 'Cinéma', evenement: 'Événement', generique: 'Générique' };
+
+  // Libellés anglais pour le prompt IA
+  const EN = (s) => Object.fromEntries(s.split('|').map((x) => x.split(':')));
+  const SCENE_EN = EN('jungle:a lush jungle with palm trees|plage:a sunny beach with sea and palm trees|montagne:snowy mountain peaks|temple:an ancient stepped jungle temple|canyon:a desert canyon with mesas|ile:a small tropical island in the sea|savane:an African savanna at sunset with acacia trees|foret:a pine forest|villa:a white luxury villa with a pool|loft:an industrial brick loft with a city window|coucher:a beach at sunset|ocean:a boat deck on the open ocean with a whale|musee:a museum gallery with framed paintings|espace:outer space with planets and a moon surface|bibliotheque:a library with tall bookshelves|carteMonde:a studio with a giant world map screen|plateauQuiz:a quiz show studio with a giant question mark and light bulbs|plateauEcrans:a TV studio with a wall of screens|plateauRoue:a game show studio with a big prize wheel|plateauJT:a TV news set with screens|rideau:a theatre stage with red curtains|escalier:a show studio with an illuminated staircase|gala:a gala hall with chandeliers|studioTV:a TV studio with a lighting rig|standup:a stand-up comedy brick wall stage under a spotlight|plateauMag:a bright magazine talk show set|bonbons:a candy land with giant lollipops|concert:a concert stage with light beams and speakers|terrasse:a café terrace with striped awnings and string lights|chandelles:a dark room lit by candles|salon:a cozy living room with a window|ruelle:a city alley at night with a street lamp|fenetreVille:an office with a large window on the city skyline|pluie:a rainy city street|cuisine:a home kitchen with cabinets and hanging pans|marche:an open-air food market with striped stalls|studioCuisine:a TV cooking studio|bureauEnquete:a detective office with an evidence board|sceneCrime:a night street behind police tape|salonTV:a living room with a big TV|ceremonie:an awards ceremony stage with a giant golden statuette|tapisRouge:a red carpet with a photo wall|salleCinema:a movie theater with a glowing screen|plateauTournage:a TV series film set with lights|stade:a football stadium with crowds|rugby:a rugby stadium with H posts|parquet:an indoor basketball court|tennis:a tennis court|circuit:a motor racing circuit with grandstands|col:a mountain road for cycling|surf:a big surfing wave|ring:a boxing ring|piste:a snowy ski slope|pisteAthle:an athletics track|hippodrome:a horse racing track with a grandstand|salleSport:a gym|arene:a sports arena under spotlights|parcArcEnCiel:a park with a big rainbow|chambre:a child bedroom with posters|debat:a TV debate set|espaceMars:the surface of Mars|vatican:a basilica dome and colonnade|soireeElectorale:an election night studio with charts|palaisRoyal:a royal palace facade|enquete:an investigation room with pinned documents|commission:a parliamentary hearing room|eurovisionJunior:a song contest stage with a heart-shaped screen|esportArena:an esports arena with giant screens|concertWeb:a home streaming studio with a ring light|spectacleNoel:a snowy Christmas show|animationGeant:a parade with giant balloons|concertVienne:a golden concert hall with organ pipes|toureiffel:the Eiffel Tower over Paris|comedieFrancaise:a classic French theatre|operaBallet:an opera house with a chandelier|quatorzeJuillet:fireworks over the city|goncourt:an elegant literary salon|eclipse:a total solar eclipse|victoiresClassique:a classical music awards stage|missFrance:a beauty pageant stage with light arches');
+  const PROP_EN = EN('coffre:a treasure chest|campfire:a campfire|tente:a tent|totem:a tribal totem|trepied:a camera on a tripod|pupitre:a game show podium|cagnotte:a jackpot jar of coins|des:giant dice|jury:a judges desk|ecranGeant:a big screen|discoball:a disco ball|podiumShow:a round show podium|micStand:a microphone stand|piano:an upright piano|cadeau:a big gift box|gateau:a tiered cake|telescope:a telescope|tortue:a giant turtle|globeProp:a globe|cubes:toy blocks|toboggan:a slide|tabouret:a bar stool|fauteuils:two armchairs|televiseur:a retro TV set|canape:a sofa|lampadaire:a floor lamp|tableBasse:a coffee table|banc:a bench|bureau:a desk with a laptop|bistro:a bistro table|transat:a deck chair|confession:a diary-room armchair|tableRomantique:a romantic candlelit table|lutrin:a lectern|plateauCuisine:a kitchen island|coinDeco:a decorated shelf|presentoir:a product display|fourneau:a stove|billot:a chopping block|voiturePolice:a police car|preuve:an evidence table|deskJT:a news anchor desk|buts:a goal|panier:a basketball hoop|podiumSport:a sports podium|formule:a racing car|velo:a racing bike|planche:a surfboard|sacFrappe:a punching bag|halteres:a barbell rack|raquettes:tennis rackets|rugbyTee:a rugby ball on a kicking tee|skis:skis and poles|amphore:an ancient amphora|fusee:a rocket|urne:a ballot box|tableCommission:a hearing table with microphones|deskGaming:a gaming desk|microPied:a vintage studio microphone|sapin:a Christmas tree|peluche:a giant teddy bear|pianoQueue:a grand piano|fauteuilVelours:a velvet armchair|cameraCine:a film camera|pupitreStatuette:an awards lectern with a statuette|cordons:velvet rope stanchions|projecteurFilm:a film projector|chaiseRealisateur:a director chair');
+  const HAND_EN = EN('mic:a microphone|trophy:a trophy|glass:a champagne glass|balloon:a balloon|phone:a phone|cue:cue cards|notebook:a notebook|mug:a mug|script:a script|buzzer:a buzzer|camera:a camera|clapper:a clapperboard|statuette:a golden statuette|popcorn:popcorn|magnifier:a magnifying glass|map:a map|compass:a compass|torch:a torch|football:a football|basketball:a basketball|rugby:a rugby ball|handball:a handball|racket:a tennis racket|flag:a flag|gloves:boxing gloves|flambeau:an olympic torch|spatula:a spatula|whisk:a whisk|plate:a plate of food|rose:a rose|lollipop:a lollipop');
+  const HAT_EN = EN('explorer:an explorer hat|beanie:a beanie|cap:a cap|helmet:a helmet|toque:a chef toque|flower:a flower in the hair|party:a party hat|fedora:a fedora|headset:a headset|crown:a crown');
+  const GESTURE_EN = { down: 'arm relaxed', wave: 'waving', point: 'pointing', hip: 'hand on hip', fist: 'fist raised' };
+  const DECOR_EN = EN('confetti:confetti|confetti2:streamers|sparkles:sparkles|notes:music notes|stars:little stars|clouds:clouds|hearts:floating hearts|bokeh:soft bokeh lights|flashs:camera flashes|birds:birds|leaves:falling leaves|steam:rising steam');
+  const COMP_FR = { duo: 'duo : objet au centre, deux personnages face à face', hostLeft: 'animateur à gauche', hostRight: 'animateur à droite', center: 'personnage au centre', trio: 'trio : deux personnages, objet à droite' };
+
+  let state = { genre: 'cuisine', subgenre: '', seed: 'p123', palette: '', bg: '', size: '' };
+  try { const s = JSON.parse(localStorage.getItem('tvp-state') || 'null'); if (s && TVP.GENRES[s.genre]) state = Object.assign(state, s); } catch (e) {}
+  let tab = 'html', showEngine = false;
+  try { tab = localStorage.getItem('tvp-tab') || 'html'; } catch (e) {}
+
+  // ----- Réglages -----
+  const gSel = $('genre');
+  Object.keys(TVP.GENRES).forEach((g) => gSel.add(new Option(GENRE_LABEL[g] + ' (' + g + ')', g)));
+  function fillSubs() {
+    const s = $('subgenre'); s.innerHTML = '';
+    const list = TVP.SUBGENRES[state.genre] || [];
+    s.add(new Option(list.length ? 'Aucun (tous les décors du genre)' : 'Aucun pour ce genre', ''));
+    list.forEach((x) => s.add(new Option(x, x)));
+    s.disabled = !list.length;
+    if (!list.includes(state.subgenre)) state.subgenre = '';
+    s.value = state.subgenre;
+  }
+  function fillPalettes() {
+    const box = $('palettes'); box.innerHTML = '';
+    const auto = document.createElement('button'); auto.className = 'sw auto'; auto.textContent = 'AUTO'; auto.title = 'Tirée parmi les palettes du genre'; auto.setAttribute('aria-pressed', String(!state.palette));
+    auto.onclick = () => { state.palette = ''; update(); }; box.appendChild(auto);
+    Object.keys(TVP.PALETTES).forEach((name) => {
+      const p = TVP.PALETTES[name]; const b = document.createElement('button'); b.className = 'sw'; b.title = name + (TVP.GENRES[state.genre].includes(name) ? ' (autorisée pour ce genre)' : '');
+      b.setAttribute('aria-label', 'Palette ' + name); b.setAttribute('aria-pressed', String(state.palette === name));
+      ['sky', 'skyAlt', 'ground', 'groundAlt', 'accent', 'accentAlt', 'ink', 'light'].forEach((r) => { const i = document.createElement('span'); i.style.background = '#' + p[r]; b.appendChild(i); });
+      b.onclick = () => { state.palette = name; update(); }; box.appendChild(b);
+    });
+  }
+  const chips = $('career');
+  Object.keys(TVP.CAREER).forEach((id) => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = id; b.title = 'career:' + id; b.onclick = () => { const c = TVP.CAREER[id]; state = Object.assign(state, { genre: c.genre, subgenre: c.subgenre || '', palette: c.palette, seed: 'career:' + id }); syncInputs(); update(); }; chips.appendChild(b); });
+
+  function syncInputs() { gSel.value = state.genre; fillSubs(); $('seed').value = state.seed; $('bg').value = state.bg; $('size').value = state.size; }
+  gSel.onchange = () => { state.genre = gSel.value; fillSubs(); update(); };
+  $('subgenre').onchange = (e) => { state.subgenre = e.target.value; update(); };
+  $('seed').oninput = (e) => { state.seed = e.target.value; update(); };
+  $('bg').oninput = (e) => { state.bg = e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6); update(); };
+  $('size').oninput = (e) => { state.size = e.target.value; update(); };
+  $('dice').onclick = () => { state.seed = 'p' + Math.floor(Math.random() * 1000); $('seed').value = state.seed; update(); };
+
+  function opts() {
+    const o = { seed: state.seed, genre: state.genre };
+    if (state.subgenre) o.subgenre = state.subgenre;
+    if (state.palette) o.palette = state.palette;
+    if (/^[0-9a-fA-F]{6}$|^[0-9a-fA-F]{3}$/.test(state.bg)) o.backgroundColor = state.bg.toLowerCase();
+    if (+state.size > 0) o.size = Math.round(+state.size);
+    return o;
+  }
+
+  // ----- Rendu -----
+  let current = null;
+  const stripDims = (svg) => svg.replace(/^<svg([^>]*?) width="[^"]*" height="[^"]*"/, '<svg$1');
+  function update() {
+    current = TVP.render(opts());
+    try { localStorage.setItem('tvp-state', JSON.stringify(state)); } catch (e) {}
+    const t = current.trace;
+    $('preview').innerHTML = stripDims(current.svg);
+    $('mGenre').textContent = t.genre + (t.subgenre ? ' / ' + t.subgenre : '');
+    $('mSeed').textContent = t.seed;
+    $('palHint').textContent = state.palette ? 'Palette forcée : ' + state.palette + '.' : 'Tirée pour cette graine : ' + t.palette + ' (parmi ' + TVP.GENRES[t.genre].join(', ') + ').';
+    fillPalettes(); renderTrace(t); renderCode(); renderThumbs();
+    $('pngOut').hidden = true;
+  }
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function charLine(c, shown) {
+    const parts = [c.variant, c.legs, c.torso, 'bras ' + c.armLeft, c.hair, c.face, c.headwear || 'sans couvre-chef', c.handheld || 'mains libres'];
+    return (shown ? '' : '<span class="off">non affiché · </span>') + '<code>' + esc(parts.join(' · ')) + '</code>';
+  }
+  function renderTrace(t) {
+    const comp = { duo: [1, 1, 0], hostLeft: [1, 0, 1], hostRight: [0, 1, 1], center: [1, 0, 1], trio: [1, 1, 1] }[t.composition];
+    const pal = Object.values(t.colors).map((h) => '<i style="background:#' + h + '"></i>').join('');
+    const rows = [
+      ['Graine DiceBear', '<code>' + esc(t.dseed) + '</code>'],
+      ['Tags', '<code>' + esc(t.tags.join(', ')) + '</code>'],
+      ['Palette', '<code>' + esc(t.palette) + '</code><span class="pal">' + pal + '</span>'],
+      ['Décor', '<code>' + t.scene + '</code>'],
+      ['Composition', '<code>' + t.composition + '</code> · ' + COMP_FR[t.composition]],
+      ['Objet central', '<code>' + t.prop + '</code>'],
+      ['Accessoire', t.accessory ? (comp[2] ? '' : '<span class="off">non affiché en duo · </span>') + '<code>' + t.accessory + '</code>' : '<span class="off">aucun (85 %)</span>'],
+      ['Personnage 1', charLine(t.character, comp[0])],
+      ['Personnage 2', charLine(t.character2, comp[1])],
+      ['Surcouche', t.decor ? '<code>' + t.decor + '</code>' : '<span class="off">aucune (75 %)</span>']
+    ];
+    $('trace').innerHTML = rows.map((r) => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('');
+  }
+
+  // ----- Code -----
+  const TABS = [
+    ['html', 'HTML autonome'], ['node', 'Node.js'], ['am', 'Audience Masters'], ['prompt', 'Prompt IA'], ['svg', 'SVG'], ['json', 'Recette']
+  ];
+  const tabsEl = $('tabs');
+  TABS.forEach(([id, label]) => { const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.id = 'tab-' + id; b.textContent = label; b.onclick = () => { tab = id; try { localStorage.setItem('tvp-tab', id); } catch (e) {} renderCode(); }; tabsEl.appendChild(b); });
+  const ENGINE_NOTE = '/* Moteur TV Visuels v' + TVP.version + ' (' + Math.round(ENGINE.length / 1024) + ' Ko) : inclus en entier quand tu copies */';
+  function codeFor(id, full) {
+    const o = opts(), t = current.trace, J = JSON.stringify(o, null, 2), eng = full || showEngine ? ENGINE : ENGINE_NOTE;
+    const file = (t.genre + '-' + t.seed).replace(/[^a-zA-Z0-9_-]+/g, '-');
+    if (id === 'html') return '<!doctype html>\n<html lang="fr">\n<meta charset="utf-8">\n<title>' + esc(file) + '</title>\n<style>body{margin:0;background:#111;display:grid;place-items:center;min-height:100vh}svg{width:min(100vw,1280px);height:auto}</style>\n<div id="visuel"></div>\n<script>\n' + eng + '\n\ndocument.getElementById("visuel").innerHTML = TVP.svg(' + J + ');\n</' + 'script>\n</html>\n';
+    if (id === 'node') return '// Enregistre ce fichier sous visuel.cjs puis : node visuel.cjs > ' + file + '.svg\n// Aucune dépendance (Node 16+).\n' + eng + '\n\nprocess.stdout.write(TVP.svg(' + J + '));\n';
+    if (id === 'am') {
+      const q = (s) => /^[\w:.-]+$/.test(s) ? s : JSON.stringify(s);
+      let cli = 'cd tv-programs\nnode generate.mjs --genre ' + t.genre + (t.subgenre ? ' --subgenre ' + t.subgenre : '') + ' --seed ' + q(t.seed) + (state.palette ? ' --palette ' + state.palette : '') + (o.backgroundColor ? ' --background ' + o.backgroundColor : '') + (o.size ? ' --size ' + o.size : '') + ' --out ' + file + '.svg';
+      const bo = Object.assign({ seed: t.seed, genre: t.genre }, t.subgenre ? { subgenre: t.subgenre } : {}, state.palette ? { palette: state.palette } : {}, o.backgroundColor ? { backgroundColor: o.backgroundColor } : {}, o.size ? { size: o.size } : {});
+      const c = t.colors, col = Object.keys(c).map((k) => k + 'Color: [\'' + c[k] + '\']').join(', ');
+      return '# A. Ligne de commande (image identique au jeu)\n' + cli + '\n' + cli.split('\n')[1].replace('.svg', '.svg --png') + '   # + PNG\n\n' +
+        '<!-- B. Navigateur -->\n<script src="dist/tv-programs.bundle.js"></' + 'script>\n<script>\n  const svg = TvPrograms.svg(' + JSON.stringify(bo) + ');\n  document.querySelector("img").src = TvPrograms.dataUri(' + JSON.stringify(bo) + ');\n</' + 'script>\n\n' +
+        '// C. @dicebear/core 10.7.0 + dist/tv-programs.json\nimport { Avatar, Style } from \'@dicebear/core\';\nimport definition from \'./dist/tv-programs.json\' with { type: \'json\' };\nconst svg = new Avatar(new Style(definition), {\n  seed: ' + JSON.stringify(t.dseed) + ',\n  tags: ' + JSON.stringify(t.tags) + ',\n  // Palette « ' + t.palette + ' »\n  ' + col.replace(/, (?=groundColor|accentColor|inkColor)/g, ',\n  ') + '\n}).toString();\n';
+    }
+    if (id === 'prompt') {
+      const comp = { duo: [1, 1], hostLeft: [1, 0], hostRight: [0, 1], center: [1, 0], trio: [1, 1] }[t.composition];
+      const chars = [comp[0] && t.character, comp[1] && t.character2].filter(Boolean);
+      const who = chars.map((c) => 'a ' + (c.variant === 'fem' ? 'woman' : 'man') + (c.headwear ? ' wearing ' + HAT_EN[c.headwear] : '') + ', ' + GESTURE_EN[c.armLeft] + (c.handheld ? ', holding ' + HAND_EN[c.handheld] : '')).join('; ');
+      const c = t.colors;
+      return 'Flat vector illustration, 16:9, clean geometric shapes, no gradients, no outlines except small dark details, soft ellipse drop shadows. Scene: ' + SCENE_EN[t.scene] + '. Foreground: ' + (chars.length > 1 ? 'two cartoon characters' : 'one cartoon character') + ' with mascot proportions, big round head, simple dot-eyed face, rosy cheeks (' + who + '), next to ' + PROP_EN[t.prop] + (t.decor ? ', with ' + DECOR_EN[t.decor] + ' overlay' : '') + '. Colors: sky #' + c.sky + ', background shapes #' + c.skyAlt + ', floor #' + c.ground + '/#' + c.groundAlt + ', accents #' + c.accent + ' and #' + c.accentAlt + ', dark details #' + c.ink + '. Cheerful TV-show mood, minimal, friendly, no text.\n';
+    }
+    if (id === 'svg') return current.svg + '\n';
+    return JSON.stringify(Object.assign({ moteur: 'TV Visuels ' + TVP.version }, o, { paletteTiree: t.palette, graineDiceBear: t.dseed }), null, 2) + '\n';
+  }
+  const HINTS = {
+    html: 'Fichier .html autonome : ouvre-le dans un navigateur, il redessine ce visuel à l\'identique.',
+    node: 'Script sans dépendance : il écrit le SVG sur la sortie standard.',
+    am: 'Avec le dépôt Audience Masters : rendu exact du jeu, octet pour octet.',
+    prompt: 'Pour Midjourney, DALL·E ou autre : même style, pas la même image.',
+    svg: 'Le SVG brut, vectoriel, à coller dans Figma, Illustrator ou Inkscape.',
+    json: 'Les réglages à conserver : avec le même moteur, ils redonnent cette image.'
+  };
+  function renderCode() {
+    TABS.forEach(([id]) => { const b = $('tab-' + id); b.setAttribute('aria-selected', String(id === tab)); b.tabIndex = id === tab ? 0 : -1; });
+    $('codeHint').textContent = HINTS[tab];
+    const extra = $('codeExtra'); extra.innerHTML = '';
+    if (tab === 'html' || tab === 'node') {
+      extra.innerHTML = '<label class="toggle"><input type="checkbox" id="showEngine"' + (showEngine ? ' checked' : '') + '> Afficher le moteur</label>';
+      $('showEngine').onchange = (e) => { showEngine = e.target.checked; renderCode(); };
+    }
+    const txt = codeFor(tab, false);
+    $('code').innerHTML = esc(txt).replace(/(\/\*[\s\S]*?\*\/|^\s*\/\/.*$|^#.*$|&lt;!--.*--&gt;)/gm, '<span class="c">$1</span>');
+  }
+  tabsEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = TABS.findIndex(([id]) => id === tab), j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length;
+    tab = TABS[j][0]; renderCode(); $('tab-' + tab).focus();
+  });
+
+  // ----- Variations -----
+  function renderThumbs() {
+    const base = state.seed || 'tv-programs';
+    $('vSeed').textContent = base;
+    const box = $('thumbs'); box.innerHTML = '';
+    for (let i = 1; i <= 12; i++) {
+      const s = base + '-' + i, o = Object.assign(opts(), { seed: s }); delete o.size;
+      const b = document.createElement('button'); b.className = 'thumb'; b.setAttribute('aria-label', 'Reprendre la graine ' + s);
+      b.innerHTML = TVP.svg(o) + '<span>' + esc(s) + '</span>';
+      b.onclick = () => { state.seed = s; $('seed').value = s; update(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+      box.appendChild(b);
+    }
+  }
+
+  // ----- Actions -----
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2200); }
+  function copy(text, ok) {
+    const fallback = () => { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); let done = false; try { done = document.execCommand('copy'); } catch (e) {} ta.remove(); toast(done ? ok : 'Copie refusée : sélectionne le code à la main.'); };
+    try { navigator.clipboard.writeText(text).then(() => toast(ok), fallback); } catch (e) { fallback(); }
+  }
+  $('copyCode').onclick = () => copy(codeFor(tab, true), 'Code copié');
+  $('copySvg').onclick = () => copy(current.svg, 'SVG copié');
+  $('copyLink').onclick = () => copy(codeFor('json', true), 'Recette copiée');
+  $('makePng').onclick = () => {
+    const w = +state.size > 0 ? Math.round(+state.size) : 1280, h = Math.round((w * 9) / 16);
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      const url = cv.toDataURL('image/png'); const out = $('pngOut');
+      out.innerHTML = '<p class="hint">PNG ' + w + '×' + h + ' : clic droit ou appui long sur l\'image, puis « Enregistrer l\'image ».</p><img alt="Visuel exporté en PNG" src="' + url + '"><div class="row"><button id="copyPng">Copier le PNG</button></div>';
+      out.hidden = false;
+      $('copyPng').onclick = () => { cv.toBlob((blob) => { try { navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => toast('PNG copié'), () => toast('Copie d\'image refusée ici : enregistre l\'image.')); } catch (e) { toast('Copie d\'image refusée ici : enregistre l\'image.'); } }); };
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stripDims(current.svg).replace('<svg ', '<svg width="' + w + '" height="' + h + '" '));
+  };
+
+  syncInputs(); update();
+})();
+</script>
