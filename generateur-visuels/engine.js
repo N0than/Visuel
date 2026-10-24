@@ -476,8 +476,10 @@ var TVP = (function () {
   }
   function fill(str, map) { return str.replace(/\$([a-zA-Z]+[0-9]?)/g, (m, k) => (map[k] ? '#' + map[k] : m)); }
 
-  function resolveCharacter(seed, sfx, req) {
-    const fem = pick(seed, 'character' + sfx, { fem: {}, masc: {} }) === 'fem';
+  function resolveCharacter(seed, sfx, req, ov) {
+    ov = ov || {};
+    const picked = pick(seed, 'character' + sfx, { fem: {}, masc: {} });
+    const fem = (ov.variant === 'fem' || ov.variant === 'masc' ? ov.variant : picked) === 'fem';
     const c = { variant: fem ? 'fem' : 'masc' };
     c.legs = pick(seed, 'legs' + sfx, LEGS);
     c.torso = pick(seed, (fem ? 'torsoF' : 'torsoM') + sfx, fem ? TORSO_F : TORSO_M);
@@ -488,6 +490,12 @@ var TVP = (function () {
     c.face = pick(seed, (fem ? 'faceF' : 'faceM') + sfx, fem ? FACE_F : FACE_M);
     c.headwear = chance(seed, 'headwear' + sfx, 45) ? pick(seed, 'headwear' + sfx, HEADWEAR, req) : null;
     c.handheld = chance(seed, 'handheld' + sfx, sfx ? 60 : 85) ? pick(seed, 'handheld' + sfx, HANDHELD, req) : null;
+    // Éléments imposés : ignorés s'ils n'existent pas pour ce personnage (pas de robe chez masc, pas de barbe chez fem).
+    const groups = { legs: LEGS, torso: fem ? TORSO_F : TORSO_M, armLeft: ARM_LEFT, hair: fem ? HAIR_F : HAIR_M, face: fem ? FACE_F : FACE_M, headwear: HEADWEAR, handheld: HANDHELD };
+    for (const k in groups) {
+      if (ov[k] === 'none' && (k === 'headwear' || k === 'handheld')) c[k] = null;
+      else if (ov[k] && groups[k][ov[k]]) c[k] = ov[k];
+    }
     return c;
   }
   function drawCharacter(c) {
@@ -514,13 +522,20 @@ var TVP = (function () {
     if (subgenre) req.sub = [subgenre];
     const tags = ['genre:' + genre].concat(subgenre ? ['sub:' + subgenre] : []);
     const t = { seed, genre, subgenre, dseed, tags, palette: palName || 'personnalisée', colors: pal };
+    const ov = o.overrides || {};
     t.scene = pick(dseed, 'scene', SCENES, req);
     t.composition = pick(dseed, 'composition', COMPOSITIONS, {});
     t.prop = pick(dseed, 'prop', PROPS, req);
     t.accessory = chance(dseed, 'accessory', 85) ? pick(dseed, 'accessory', ACCESSORIES, req) : null;
-    t.character = resolveCharacter(dseed, '', req);
-    t.character2 = resolveCharacter(dseed, '2', req);
+    t.character = resolveCharacter(dseed, '', req, ov.character);
+    t.character2 = resolveCharacter(dseed, '2', req, ov.character2);
     t.decor = chance(dseed, 'decor', 75) ? pick(dseed, 'decor', DECOR, req) : null;
+    // Éléments imposés (overrides) : ils remplacent le tirage sans toucher aux autres décisions.
+    const og = { scene: SCENES, composition: COMPOSITIONS, prop: PROPS, accessory: ACCESSORIES, decor: DECOR };
+    for (const k in og) {
+      if (ov[k] === 'none' && (k === 'accessory' || k === 'decor')) t[k] = null;
+      else if (ov[k] && og[k][ov[k]]) t[k] = ov[k];
+    }
     const cc = {};
     cc.skin = color(dseed, 'skin', CHAR_COLORS.skin);
     cc.hair = color(dseed, 'hair', CHAR_COLORS.hair);
@@ -556,11 +571,159 @@ var TVP = (function () {
     return { svg, trace: t };
   }
 
+  // ---------- Prompt calibré : réglages ⇄ texte ----------
+  // Libellé anglais (sert au prompt d'IA et à la relecture exacte) | mots français reconnus en saisie libre.
+  const L = (s) => { const o = {}; s.split('|').forEach((x) => { const [k, en, fr] = x.split(':'); o[k] = { en, fr: fr || '' }; }); return o; };
+  const LABELS = {
+    genre: L('aventure:adventure show:aventure survie expedition explorateur koh|jeu:game show:jeu jeux quiz questions motus|divertissement:entertainment show:divertissement variete soiree prime|telerealite:reality show:telerealite realite candidats|dating:dating show:rencontre amour romance romantique couple|cuisine:cooking show:cuisine cuisinier chef patisserie recette gastronomie|talent:talent show:telecrochet chant chanteur voix audition casting|policier:crime show:policier police crime detective thriller|drame:drama series:drame fiction feuilleton|sport:sports broadcast:sport match athlete championnat|documentaire:documentary:documentaire reportage|magazine:magazine talk show:magazine talk lifestyle|info:news program:info information journal actualite actualites|humour:comedy show:humour comedie humoriste sketch rire|jeunesse:kids show:jeunesse enfants enfant dessin anime|cinema:cinema program:cinema film festival|evenement:live event:evenement ceremonie direct|generique:TV show:'),
+    sub: L('survie:survival:survie|montagne:mountain:montagne alpinisme sommet|football:football:football foot|rugby:rugby:rugby|basket:basketball:basket|handball:handball:handball|tennis:tennis:tennis|auto:motor racing:formule f1 automobile rallye|velo:cycling:velo cyclisme|surf:surfing:surf|combat:combat sports:boxe combat judo|ski:skiing:ski|fitness:fitness:fitness musculation|athletisme:athletics:athletisme sprint|hippisme:horse racing:hippisme hippique cheval|nature:nature:nature animaux|histoire:history:histoire antique|science:science:science scientifique|culture:culture:culture art arts|ceremonie:awards ceremony:remise prix cesar|festival:film festival:festival cannes|film:movie:film|serie:TV series:serie tournage|debat:debate:debat|espace:space mission:mars spatial|vatican:vatican:vatican pape|election:election night:election electorale vote|royal:royal event:royal roi reine|enquete:investigation:enquete|commission:hearing:commission parlement audition|eurovision:song contest:eurovision|esport:esports:esport gaming|concertweb:web concert:streaming stream|noel:christmas show:noel|animation:parade:parade defile|vienne:new year concert:vienne|toureiffel:eiffel tower:eiffel|theatre:theatre:theatre|opera:opera:opera ballet|quatorze:bastille day:quatorze juillet|goncourt:literary prize:goncourt litteraire|eclipse:eclipse:eclipse|victoires:classical awards:classique|miss:beauty pageant:miss'),
+    scene: L('jungle:a lush jungle with palm trees:jungle|plage:a sunny beach with sea and palm trees:plage|montagne:snowy mountain peaks:montagne|temple:an ancient stepped jungle temple:temple|canyon:a desert canyon with mesas:canyon desert|ile:a small tropical island in the sea:ile|savane:an African savanna at sunset with acacia trees:savane|foret:a pine forest:foret|villa:a white luxury villa with a pool:villa piscine|loft:an industrial brick loft with a city window:loft|coucher:a beach at sunset:coucher soleil|ocean:a boat deck on the open ocean with a whale:ocean baleine bateau|musee:a museum gallery with framed paintings:musee tableaux|espace:outer space with planets and a moon surface:espace planetes lune|bibliotheque:a library with tall bookshelves:bibliotheque|carteMonde:a studio with a giant world map screen:carte monde|plateauQuiz:a quiz show studio with a giant question mark and light bulbs:point interrogation|plateauEcrans:a TV studio with a wall of screens:mur ecrans|plateauRoue:a game show studio with a big prize wheel:roue|plateauJT:a TV news set with screens:journal televise|rideau:a theatre stage with red curtains:rideau rideaux|escalier:a show studio with an illuminated staircase:escalier|gala:a gala hall with chandeliers:gala lustres|studioTV:a TV studio with a lighting rig:studio television|standup:a stand-up comedy brick wall stage under a spotlight:standup scene ouverte|plateauMag:a bright magazine talk show set:plateau magazine|bonbons:a candy land with giant lollipops:bonbons|concert:a concert stage with light beams and speakers:concert|terrasse:a café terrace with striped awnings and string lights:terrasse|chandelles:a dark room lit by candles:chandelles bougies|salon:a cozy living room with a window:salon|ruelle:a city alley at night with a street lamp:ruelle|fenetreVille:an office with a large window on the city skyline:fenetre ville|pluie:a rainy city street:pluie|cuisine:a home kitchen with cabinets and hanging pans:cuisine|marche:an open-air food market with striped stalls:marche|studioCuisine:a TV cooking studio:studio cuisine|bureauEnquete:a detective office with an evidence board:bureau enquete|sceneCrime:a night street behind police tape:scene crime|salonTV:a living room with a big TV:salon tele|ceremonie:an awards ceremony stage with a giant golden statuette:ceremonie|tapisRouge:a red carpet with a photo wall:tapis rouge|salleCinema:a movie theater with a glowing screen:salle cinema|plateauTournage:a TV series film set with lights:plateau tournage|stade:a football stadium with crowds:stade|rugby:a rugby stadium with H posts:terrain rugby|parquet:an indoor basketball court:parquet|tennis:a tennis court:court tennis|circuit:a motor racing circuit with grandstands:circuit|col:a mountain road for cycling:col|surf:a big surfing wave:vague|ring:a boxing ring:ring|piste:a snowy ski slope:piste|pisteAthle:an athletics track:piste athletisme|hippodrome:a horse racing track with a grandstand:hippodrome|salleSport:a gym:salle sport|arene:a sports arena under spotlights:arene|parcArcEnCiel:a park with a big rainbow:arc ciel|chambre:a child bedroom with posters:chambre|debat:a TV debate set:debat|espaceMars:the surface of Mars:mars|vatican:a basilica dome and colonnade:vatican basilique|soireeElectorale:an election night studio with charts:soiree electorale|palaisRoyal:a royal palace facade:palais royal|enquete:an investigation room with pinned documents:salle enquete|commission:a parliamentary hearing room:salle commission|eurovisionJunior:a song contest stage with a heart-shaped screen:eurovision|esportArena:an esports arena with giant screens:arene esport|concertWeb:a home streaming studio with a ring light:streaming|spectacleNoel:a snowy Christmas show:spectacle noel|animationGeant:a parade with giant balloons:ballons geants|concertVienne:a golden concert hall with organ pipes:salle concert doree|toureiffel:the Eiffel Tower over Paris:tour eiffel paris|comedieFrancaise:a classic French theatre:comedie francaise|operaBallet:an opera house with a chandelier:opera|quatorzeJuillet:fireworks over the city:feu artifice|goncourt:an elegant literary salon:salon litteraire|eclipse:a total solar eclipse:eclipse|victoiresClassique:a classical music awards stage:musique classique|missFrance:a beauty pageant stage with light arches:election miss'),
+    prop: L('coffre:a treasure chest:coffre tresor|campfire:a campfire:feu camp|tente:a tent:tente|totem:a tribal totem:totem|trepied:a camera on a tripod:trepied|pupitre:a game show podium:pupitre|cagnotte:a jackpot jar of coins:cagnotte|des:giant dice:des|jury:a judges desk:jury|ecranGeant:a big screen:ecran geant|discoball:a disco ball:boule disco|podiumShow:a round show podium:podium rond|micStand:a microphone stand:pied micro|piano:an upright piano:piano droit|cadeau:a big gift box:cadeau|gateau:a tiered cake:gateau|telescope:a telescope:telescope|tortue:a giant turtle:tortue|globeProp:a globe:globe|cubes:toy blocks:cubes|toboggan:a slide:toboggan|tabouret:a bar stool:tabouret|fauteuils:two armchairs:fauteuils|televiseur:a retro TV set:televiseur|canape:a sofa:canape|lampadaire:a floor lamp:lampadaire|tableBasse:a coffee table:table basse|banc:a bench:banc|bureau:a desk with a laptop:bureau|bistro:a bistro table:bistrot|transat:a deck chair:transat|confession:a diary-room armchair:confessionnal|tableRomantique:a romantic candlelit table:diner romantique|lutrin:a lectern:lutrin|plateauCuisine:a kitchen island:ilot|coinDeco:a decorated shelf:deco|presentoir:a product display:presentoir|fourneau:a stove:fourneau four|billot:a chopping block:billot planche decouper|voiturePolice:a police car:voiture police|preuve:an evidence table:preuves|deskJT:a news anchor desk:desk|buts:a goal:buts cage|panier:a basketball hoop:panier|podiumSport:a sports podium:podium|formule:a racing car:voiture course|velo:a racing bike:velo|planche:a surfboard:planche surf|sacFrappe:a punching bag:sac frappe|halteres:a barbell rack:halteres|raquettes:tennis rackets:raquettes|rugbyTee:a rugby ball on a kicking tee:tee|skis:skis and poles:skis|amphore:an ancient amphora:amphore|fusee:a rocket:fusee|urne:a ballot box:urne|tableCommission:a hearing table with microphones:table commission|deskGaming:a gaming desk:bureau gaming|microPied:a vintage studio microphone:micro vintage|sapin:a Christmas tree:sapin|peluche:a giant teddy bear:peluche nounours|pianoQueue:a grand piano:piano queue|fauteuilVelours:a velvet armchair:fauteuil velours|cameraCine:a film camera:camera cinema|pupitreStatuette:an awards lectern with a statuette:pupitre statuette|cordons:velvet rope stanchions:cordons|projecteurFilm:a film projector:projecteur|chaiseRealisateur:a director chair:chaise realisateur'),
+    accessory: L('backpack:a backpack:sac dos|rocks:rocks:rochers pierres|suitcase:a suitcase:valise|plant:a potted plant:plante|books:a pile of books:livres|cone:a traffic cone:plot cone|ballGround:a ball on the ground:ballon sol|ferACheval:a horseshoe:fer cheval|haie:a hurdle:haie|tyres:a stack of tyres:pneus|basket:a picnic basket:panier pique nique|veggies:vegetables:legumes|float:a swim ring:bouee|hydrant:a fire hydrant:bouche incendie|clapperGround:a clapperboard on the floor:clap sol|speaker:a speaker:enceinte|moneyBag:a money bag:sac argent|toys:toys:jouets|pileDossiers:a pile of files:dossiers|cadeaux:gifts:cadeaux paquets|manette:a game controller:manette|batonsLumineux:glow sticks:batons lumineux|diademe:a tiara:diademe|coussinCouronne:a crown on a cushion:coussin couronne|popcornSeau:a popcorn bucket:seau popcorn|bobine:a film reel:bobine|buzzerStand:a buzzer stand:borne buzzer'),
+    handheld: L('mic:a microphone:micro microphone|trophy:a trophy:trophee coupe|glass:a champagne glass:verre champagne flute|balloon:a balloon:ballon baudruche|phone:a phone:telephone portable smartphone|cue:cue cards:fiches|notebook:a notebook:carnet calepin|mug:a mug:tasse mug cafe|script:a script:scenario script|buzzer:a buzzer:buzzer|camera:a camera:appareil photo|clapper:a clapperboard:clap|statuette:a golden statuette:statuette|popcorn:popcorn:popcorn|magnifier:a magnifying glass:loupe|map:a map:carte plan|compass:a compass:boussole|torch:a torch:torche|football:a football:ballon foot|basketball:a basketball:ballon basket|rugby:a rugby ball:ballon rugby|handball:a handball:ballon hand|racket:a tennis racket:raquette|flag:a flag:drapeau|gloves:boxing gloves:gants|flambeau:an olympic torch:flambeau flamme|spatula:a spatula:spatule|whisk:a whisk:fouet|plate:a plate of food:assiette|rose:a rose:rose|lollipop:a lollipop:sucette'),
+    headwear: L('explorer:an explorer hat:chapeau explorateur|beanie:a beanie:bonnet|cap:a cap:casquette|helmet:a helmet:casque|toque:a chef toque:toque|flower:a flower in the hair:fleur cheveux|party:a party hat:chapeau fete cotillon|fedora:a fedora:feutre borsalino|headset:a headset:oreillette|crown:a crown:couronne'),
+    decor: L('confetti:confetti:confettis|confetti2:streamers:serpentins|sparkles:sparkles:paillettes etincelles|notes:music notes:notes musique|stars:little stars:etoiles|clouds:clouds:nuages|hearts:floating hearts:coeurs|bokeh:soft bokeh lights:bokeh lumieres floues|flashs:camera flashes:flashs photographes|birds:birds:oiseaux|leaves:falling leaves:feuilles|steam:rising steam:vapeur fumee'),
+    gesture: L('down:arm relaxed:bras le long|wave:waving:salue saluant coucou|point:pointing:pointe montre doigt|hip:hand on hip:hanche|fist:fist raised:poing leve victoire'),
+    composition: L('duo:facing each other:face a face duo|hostLeft:host on the left:a gauche|hostRight:host on the right:a droite|center:standing in the center:au centre|trio:group shot:trio groupe')
+  };
+  const COMP_SLOTS = { duo: [1, 1], hostLeft: [1, 0], hostRight: [0, 1], center: [1, 0], trio: [1, 1] };
+
+  function toPrompt(t) {
+    const c = t.colors, slots = COMP_SLOTS[t.composition];
+    const chars = [slots[0] && t.character, slots[1] && t.character2].filter(Boolean);
+    const who = chars.map((ch) => 'a ' + (ch.variant === 'fem' ? 'woman' : 'man') + (ch.headwear ? ' wearing ' + LABELS.headwear[ch.headwear].en : '') + ', ' + LABELS.gesture[ch.armLeft].en + (ch.handheld ? ', holding ' + LABELS.handheld[ch.handheld].en : '')).join('; ');
+    return 'Flat vector illustration, 16:9, clean geometric shapes, no gradients, no outlines except small dark details, soft ellipse drop shadows. ' +
+      'Genre: ' + LABELS.genre[t.genre].en + ' (' + t.genre + (t.subgenre ? ' / ' + t.subgenre : '') + '). ' +
+      'Scene: ' + LABELS.scene[t.scene].en + '. ' +
+      'Foreground: ' + (chars.length > 1 ? 'two cartoon characters ' : 'one cartoon character ') + LABELS.composition[t.composition].en + ', mascot proportions, big round head, simple dot-eyed face, rosy cheeks (' + who + '), next to ' + LABELS.prop[t.prop].en +
+      (t.accessory && t.composition !== 'duo' ? ', with ' + LABELS.accessory[t.accessory].en + ' on the floor' : '') + '. ' +
+      'Overlay: ' + (t.decor ? LABELS.decor[t.decor].en : 'none') + '. ' +
+      'Colors: sky #' + c.sky + ', background shapes #' + c.skyAlt + ', floor #' + c.ground + '/#' + c.groundAlt + ', accents #' + c.accent + ' and #' + c.accentAlt + ', dark details #' + c.ink + ', highlights #' + c.light + '. ' +
+      'Cheerful TV-show mood, minimal, friendly, no text. Seed: ' + JSON.stringify(t.seed) + '.';
+  }
+
+  const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const STOP = new Set('a an the with of on in and to for at by its big small giant little tv de la le les du des un une et avec sur en au aux d l un tres plateau studio scene set show emission tele television salle'.split(' '));
+  const words = (s) => norm(s).replace(/([a-z])([A-Z])/g, '$1 $2').split(/[^a-z0-9]+/).filter((w) => w.length > 1 && !STOP.has(w));
+  const splitKey = (k) => k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  function bestMatch(text, labels) {
+    if (!text) return null;
+    const nt = ' ' + norm(text).replace(/[^a-z0-9#]+/g, ' ') + ' ';
+    const toks = new Set(nt.trim().split(' '));
+    const vocab = {}, df = {};
+    for (const k in labels) { vocab[k] = new Set(words(labels[k].en + ' ' + labels[k].fr + ' ' + splitKey(k))); vocab[k].forEach((w) => { df[w] = (df[w] || 0) + 1; }); }
+    let best = null, bestScore = 0;
+    for (const k in labels) {
+      const phrase = ' ' + norm(labels[k].en).replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+      let score = nt.includes(phrase) ? 100 + phrase.length : 0;
+      vocab[k].forEach((w) => { if (toks.has(w)) score += 1 / df[w]; });
+      if (score > bestScore) { bestScore = score; best = k; }
+    }
+    return bestScore >= 0.99 ? best : null;
+  }
+  const section = (text, re) => { const m = text.match(re); return m ? m[1] : null; };
+
+  function parsePrompt(text, base) {
+    const raw = String(text || ''), nt = norm(raw), b = base || {};
+    const opts = {}, ov = {};
+    const seedM = raw.match(/\bseed\s*:\s*("(?:[^"\\]|\\.)*"|[^\s.,;]+)/i) || raw.match(/\bgraine\s*:\s*("(?:[^"\\]|\\.)*"|[^\s.,;]+)/i);
+    opts.seed = seedM ? (seedM[1][0] === '"' ? JSON.parse(seedM[1]) : seedM[1]) : b.seed || 'prompt-' + hash(nt.trim()).toString(36);
+    // Genre et sous-genre : forme exacte « (genre / sous-genre) », sinon mots-clés.
+    const gm = raw.match(/genre\s*:[^(\n]*\(\s*([a-z]+)\s*(?:\/\s*([a-z]+)\s*)?\)/i);
+    let genre = gm && GENRES[gm[1]] ? gm[1] : null, sub = gm && gm[2] ? gm[2] : '';
+    const sceneText = section(raw, /scene\s*:\s*([^.]*)/i) || section(raw, /d[ée]cor\s*:\s*([^.]*)/i);
+    const scene = bestMatch(sceneText || raw, LABELS.scene);
+    if (!genre) {
+      const score = {};
+      for (const g in LABELS.genre) words(LABELS.genre[g].fr + ' ' + LABELS.genre[g].en).forEach((w) => { if ((' ' + nt.replace(/[^a-z0-9]+/g, ' ') + ' ').includes(' ' + w + ' ')) score[g] = (score[g] || 0) + 1; });
+      for (const g in SUBGENRES) SUBGENRES[g].forEach((s) => { const l = LABELS.sub[s]; if (bestMatch(raw, { [s]: l })) { score[g] = (score[g] || 0) + 1.5; } });
+      const ranked = Object.keys(score).sort((x, y) => score[y] - score[x]);
+      genre = ranked[0] || null;
+    }
+    const guessGenre = !genre;
+    if (guessGenre) genre = b.genre || 'generique';
+    if (!sub && SUBGENRES[genre]) { const subs = {}; SUBGENRES[genre].forEach((s) => { subs[s] = LABELS.sub[s]; }); sub = bestMatch(raw, subs) || ''; }
+    opts.genre = genre;
+    if (sub && (SUBGENRES[genre] || []).includes(sub)) opts.subgenre = sub;
+    // Palette : couleurs explicites par rôle, ou « palette <nom> ».
+    const hex = (re) => { const m = raw.match(re); return m ? m.slice(1).map((x) => x.toLowerCase()) : null; };
+    const roles = {};
+    let m;
+    if ((m = hex(/sky\s*#([0-9a-f]{6})/i))) roles.sky = m[0];
+    if ((m = hex(/background shapes\s*#([0-9a-f]{6})/i))) roles.skyAlt = m[0];
+    if ((m = hex(/floor\s*#([0-9a-f]{6})\s*\/\s*#([0-9a-f]{6})/i))) { roles.ground = m[0]; roles.groundAlt = m[1]; }
+    if ((m = hex(/accents?\s*#([0-9a-f]{6})\s*(?:and|et|\/)\s*#([0-9a-f]{6})/i))) { roles.accent = m[0]; roles.accentAlt = m[1]; }
+    if ((m = hex(/dark details\s*#([0-9a-f]{6})/i))) roles.ink = m[0];
+    if ((m = hex(/highlights\s*#([0-9a-f]{6})/i))) roles.light = m[0];
+    const pn = nt.match(/palette\s*:?\s*([a-z]+)|([a-z]+)\s+palette/);
+    const named = pn && PALETTES[pn[1] || pn[2]] ? pn[1] || pn[2] : null;
+    if (Object.keys(roles).length) {
+      const full = Object.assign(paletteObj(PALETTES[named || 'jour']), roles);
+      const same = Object.keys(PALETTES).find((k) => ROLES.every((r, i) => PALETTES[k][i] === full[r]));
+      opts.palette = same || full;
+    } else if (named) opts.palette = named;
+    // Décor, objets, surcouche
+    if (scene) ov.scene = scene;
+    const fg = section(raw, /foreground\s*:\s*([^]*?)(?:\.\s+[A-Z][a-z]+\s*:|$)/) || raw;
+    const propText = section(fg, /next to\s+([^,.;()]*)/i) || section(raw, /(?:a cote d['e ]|pres d['e ]|devant)\s*([^,.;()]*)/i);
+    const prop = bestMatch(propText || raw, LABELS.prop);
+    if (prop) ov.prop = prop;
+    const accText = section(fg, /with\s+([^,.;()]*)\s+on the floor/i) || section(raw, /(?:au sol|par terre)\s*:?\s*([^,.;()]*)/i);
+    const acc = accText ? bestMatch(accText, LABELS.accessory) : null;
+    if (acc) ov.accessory = acc;
+    const decText = section(raw, /overlay\s*:\s*([^.]*)/i);
+    if (decText && /^\s*none\s*$/i.test(decText)) ov.decor = 'none';
+    else { const d = bestMatch(decText || raw, LABELS.decor); if (d) ov.decor = d; }
+    // Personnages
+    const P_FEM = /\b(woman|girl|lady|femme|fille|presentatrice|animatrice|cheffe|candidate|journaliste femme)\b/g, P_MASC = /\b(man|boy|guy|homme|garcon|presentateur|animateur|candidat)\b/g;
+    const paren = section(raw, /\(([^()]*\b(?:woman|man|femme|homme)\b[^()]*)\)/i);
+    let segs = paren ? paren.split(';') : null;
+    if (!segs) {
+      const hits = [];
+      let x; const re = new RegExp(P_FEM.source + '|' + P_MASC.source, 'g');
+      while ((x = re.exec(nt))) hits.push({ i: x.index, fem: new RegExp(P_FEM.source).test(x[0]) });
+      if (hits.length) segs = hits.slice(0, 2).map((h, k) => (k === 0 ? nt.slice(0, (hits[1] || { i: nt.length }).i) : nt.slice(h.i)));
+      else if (/\b(two|deux)\s+(cartoon\s+)?(characters|personnages|presentateurs|animateurs)\b/.test(nt)) segs = ['', ''];
+    }
+    let comp = bestMatch(section(fg, /characters?\s+([^,]*)/i) || '', LABELS.composition) || bestMatch(raw.match(/face à face|face a face|à gauche|a gauche|à droite|a droite|au centre|trio/i)?.[0] || '', LABELS.composition);
+    if (segs) {
+      const n2 = Math.min(segs.length, 2);
+      if (!comp || COMP_SLOTS[comp][0] + COMP_SLOTS[comp][1] !== n2) comp = n2 === 2 ? 'duo' : comp === 'hostRight' || comp === 'center' ? comp : 'hostLeft';
+      ov.composition = comp;
+      const slots = COMP_SLOTS[comp], keys = [slots[0] && 'character', slots[1] && 'character2'].filter(Boolean);
+      segs.slice(0, 2).forEach((sg, k) => {
+        const c = {}, ns = norm(sg);
+        if (new RegExp(P_FEM.source).test(ns)) c.variant = 'fem'; else if (new RegExp(P_MASC.source).test(ns)) c.variant = 'masc';
+        const hw = bestMatch(section(sg, /wearing\s+([^,;]*)/i) || (paren ? '' : sg), LABELS.headwear); if (hw) c.headwear = hw;
+        const hh = bestMatch(section(sg, /holding\s+([^,;]*)/i) || section(sg, /(?:tenant|tient|avec)\s+([^,;]*)/i) || (paren ? '' : sg), LABELS.handheld); if (hh) c.handheld = hh;
+        const ge = bestMatch(sg, LABELS.gesture); if (ge) c.armLeft = ge;
+        if (Object.keys(c).length) ov[keys[k]] = c;
+      });
+    } else if (comp) ov.composition = comp;
+    // Genre non nommé : les éléments reconnus votent avec leurs tags (décor ×2).
+    if (guessGenre) {
+      const vote = {}, add = (item, w) => item && item.tags.forEach((t) => { if (t.startsWith('genre:')) vote[t.slice(6)] = (vote[t.slice(6)] || 0) + w; });
+      add(SCENES[ov.scene], 2); add(PROPS[ov.prop], 1); add(ACCESSORIES[ov.accessory], 1); add(DECOR[ov.decor], 0.5);
+      ['character', 'character2'].forEach((k) => { if (ov[k]) { add(HEADWEAR[ov[k].headwear], 1); add(HANDHELD[ov[k].handheld], 1); } });
+      const top = Object.keys(vote).sort((x, y) => vote[y] - vote[x])[0];
+      if (top) { opts.genre = top; delete opts.subgenre; if (SUBGENRES[top]) { const subs = {}; SUBGENRES[top].forEach((x) => { subs[x] = LABELS.sub[x]; }); const sb = bestMatch(raw, subs); if (sb) opts.subgenre = sb; } }
+    }
+    if (Object.keys(ov).length) opts.overrides = ov;
+    ['backgroundColor', 'size'].forEach((k) => { if (b[k]) opts[k] = b[k]; });
+    return opts;
+  }
+  const fromPrompt = (text, base) => parsePrompt(text, base);
+  const CATALOG = {
+    scene: Object.keys(SCENES), composition: Object.keys(COMPOSITIONS), prop: Object.keys(PROPS), accessory: Object.keys(ACCESSORIES), decor: Object.keys(DECOR),
+    legs: Object.keys(LEGS), torsoF: Object.keys(TORSO_F), torsoM: Object.keys(TORSO_M), armLeft: Object.keys(ARM_LEFT), hairF: Object.keys(HAIR_F), hairM: Object.keys(HAIR_M),
+    faceF: Object.keys(FACE_F), faceM: Object.keys(FACE_M), headwear: Object.keys(HEADWEAR), handheld: Object.keys(HANDHELD)
+  };
+
   const svg = (o) => render(o).svg;
   const dataUri = (o) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg(o));
   const career = (id) => Object.assign({ seed: 'career:' + id }, CAREER[id]);
   const counts = { scene: Object.keys(SCENES).length, prop: Object.keys(PROPS).length, accessory: Object.keys(ACCESSORIES).length, handheld: Object.keys(HANDHELD).length, headwear: Object.keys(HEADWEAR).length, decor: Object.keys(DECOR).length };
 
-  return { version: '1.0.0', hash, value, render, resolve, svg, dataUri, career, PALETTES: Object.fromEntries(Object.keys(PALETTES).map((k) => [k, paletteObj(PALETTES[k])])), GENRES, SUBGENRES, CAREER, counts };
+  return { version: '1.1.0', hash, value, render, resolve, svg, dataUri, career, toPrompt: (o) => toPrompt(o && o.dseed ? o : resolve(o)), parsePrompt, fromPrompt, LABELS, CATALOG, PALETTES: Object.fromEntries(Object.keys(PALETTES).map((k) => [k, paletteObj(PALETTES[k])])), GENRES, SUBGENRES, CAREER, counts };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = TVP;
