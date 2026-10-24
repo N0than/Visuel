@@ -60,7 +60,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--focus); font
 .monitor { background: var(--code-bg); border-radius: var(--r); padding: 10px; display: grid; gap: 8px }
 .monitor-bar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font: 500 11px var(--mono); letter-spacing: .08em; color: var(--code-muted); text-transform: uppercase; padding: 0 2px }
 .monitor-bar b { color: var(--code-fg); font-weight: 500 }
-#preview, #claudeImg { aspect-ratio: 16 / 9; max-width: 100%; width: 100%; border-radius: 6px; overflow: hidden; background: #000; display: block }
+#preview { aspect-ratio: 16 / 9; max-width: 100%; width: 100%; border-radius: 6px; overflow: hidden; background: #000; display: block }
 #preview svg { display: block; width: 100%; height: 100% }
 .actions { display: flex; flex-wrap: wrap; gap: 8px }
 .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; align-items: start }
@@ -79,7 +79,7 @@ td code, .mono { font: 12.5px var(--mono) }
 [role=tab] { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 8px; color: var(--muted); font-weight: 600 }
 [role=tab][aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent) }
 .codebox { position: relative; background: var(--code-bg); border-radius: 8px; min-width: 0 }
-.codebox pre { margin: 0; padding: 14px; overflow: auto; max-height: 380px; color: var(--code-fg); font: 12.5px/1.6 var(--mono); white-space: pre; tab-size: 2 }
+.codebox pre { margin: 0; padding: 14px; overflow: auto; max-height: 380px; color: var(--code-fg); font: 12.5px/1.6 var(--mono); font-variant-ligatures: none; white-space: pre; tab-size: 2 }
 .codebox .c { color: var(--code-muted) }
 .codebar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap }
 .codebar p { margin: 0 }
@@ -90,12 +90,14 @@ td code, .mono { font: 12.5px var(--mono) }
 .thumb svg { display: block; width: 100%; height: auto; aspect-ratio: 16/9 }
 .thumb span { padding: 4px 7px; overflow: hidden; text-overflow: ellipsis }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; z-index: 20; max-width: calc(100vw - 32px) }
-#pngOut { display: grid; gap: 8px }
-#pngOut img { width: 100%; border-radius: 6px; border: 1px solid var(--line) }
-.mode { display: grid; gap: 8px; align-content: start; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg) }
-.mode h3 { margin: 0; font: 700 15px var(--display) }
-.mode p { margin: 0 }
-.wait { color: var(--muted); font: 500 12px var(--mono) }
+.pngout { display: grid; gap: 8px }
+.pngout img { width: 100%; border-radius: 6px; border: 1px solid var(--line) }
+.gen { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr); gap: 18px; align-items: start }
+@media (max-width: 980px) { .gen { grid-template-columns: minmax(0, 1fr) } }
+.gen-in, .gen-out { display: grid; gap: 10px; min-width: 0 }
+#gImg { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; border-radius: 6px; background: #000; display: block; object-fit: contain }
+.more { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 8px }
+.more summary { cursor: pointer; font-weight: 600; font-size: 13.5px }
 footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
 @media (prefers-reduced-motion: no-preference) { #preview svg { animation: cut .25s ease-out } @keyframes cut { from { opacity: .4 } to { opacity: 1 } } }
 </style>
@@ -103,8 +105,47 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
 <div class="wrap">
   <header>
     <h1>Atelier Visuels TV</h1><span class="onair">Antenne</span>
-    <p>Génère une illustration 16:9 de programme télé dans le style tv-programs, à partir de réglages ou d'un prompt, puis copie le code qui la reproduit ailleurs : page HTML, script Node, commande Audience Masters ou prompt d'IA.</p>
+    <p>Écris un prompt, regarde l'image se dessiner, puis copie le code qui la reproduit ailleurs. Plus bas, l'atelier génère des illustrations de programmes télé dans le style tv-programs, avec leur code HTML, Node, Audience Masters ou prompt d'IA.</p>
   </header>
+
+  <section class="panel" aria-labelledby="gTitle">
+    <div class="codebar"><span class="label" id="gTitle">Prompt → image</span><div class="chips" id="examples"></div></div>
+    <div class="gen">
+      <div class="gen-in">
+        <textarea id="prompt" rows="14" spellcheck="false" aria-labelledby="gTitle" aria-describedby="gHelp" placeholder="Décris l'image : scène, sujet, premier plan, arrière-plan, couleurs en hex, style…"></textarea>
+        <div class="row">
+          <button class="primary" id="gGo">Générer l'image</button>
+          <button id="pStop" hidden>Arrêter</button>
+          <label class="toggle"><input type="checkbox" id="gHq"> Qualité maximale (plus lent)</label>
+        </div>
+        <p class="hint" id="gHelp">N'importe quel prompt : Claude dessine l'image décrite en SVG vectoriel, en respectant la composition et les couleurs hex indiquées. Un prompt calibré de l'atelier (avec <code class="mono">Seed:</code>) passe par le moteur et redonne exactement son image.</p>
+        <details class="more">
+          <summary>Style TV de l'atelier</summary>
+          <p class="hint">Transforme le prompt en réglages du moteur (personnages mascottes, décors TV) : rendu instantané et reproductible, affiché dans l'atelier plus bas.</p>
+          <div class="row"><button id="pEngine">Générer avec le moteur</button><button id="pInterpret" hidden>Interpréter avec Claude</button><button class="link" id="pFill">Reprendre le prompt calibré du visuel de l'atelier</button></div>
+          <div class="chips" id="pUnderstood" aria-live="polite"></div>
+        </details>
+      </div>
+      <div class="gen-out">
+        <div class="monitor">
+          <div class="monitor-bar"><span>PROMPT · <b id="gMode">exemple</b></span><span id="pStatus" role="status"></span></div>
+          <img id="gImg" alt="Image générée à partir du prompt">
+        </div>
+        <div class="actions">
+          <button class="primary" id="gCopySvg">Copier le SVG</button>
+          <button id="gPng">Exporter en PNG</button>
+          <button id="gDl" hidden>Télécharger le SVG</button>
+        </div>
+        <div id="gPngOut" class="pngout" hidden></div>
+        <div class="codebar"><span class="label">Code pour reproduire cette image</span></div>
+        <div class="tabs" role="tablist" id="gTabs"></div>
+        <div class="codebox"><pre id="gCode" tabindex="0"></pre></div>
+        <div class="row"><button class="primary" id="gCopyCode">Copier ce code</button><button id="gDlCode" hidden>Télécharger</button></div>
+        <div class="codebar"><span class="label">Historique</span><span class="hint">Les 6 dernières images, gardées dans ce navigateur.</span></div>
+        <div class="thumbs" id="gHist"></div>
+      </div>
+    </div>
+  </section>
 
   <div class="grid">
     <aside class="panel" aria-label="Réglages">
@@ -134,31 +175,7 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
         <button id="makePng">Exporter en PNG</button>
         <button id="copyLink">Copier la recette</button>
       </div>
-      <div id="pngOut" hidden></div>
-
-      <section class="panel" aria-labelledby="pTitle">
-        <div class="codebar"><span class="label" id="pTitle">Créer depuis un prompt</span><button class="link" id="pFill">Reprendre le prompt calibré du visuel affiché</button></div>
-        <textarea id="prompt" rows="5" spellcheck="false" aria-describedby="pHelp" placeholder="Ex. : Une cheffe avec une toque tenant une spatule, à côté d'un gâteau, confettis, palette menthe"></textarea>
-        <p class="hint" id="pHelp">Un prompt calibré (celui de l'onglet Prompt IA, avec sa graine et ses couleurs) redonne exactement la même image. En texte libre, français ou anglais, le moteur repère le genre, le décor, l'objet, les personnages, leurs gestes, couvre-chefs et objets tenus, la surcouche et la palette.</p>
-        <div class="split">
-          <div class="mode">
-            <h3>Moteur</h3>
-            <p class="hint">Instantané et reproductible : l'image devient le visuel affiché, et tous les onglets de code la reproduisent.</p>
-            <div class="row"><button class="primary" id="pEngine">Générer avec le moteur</button><button id="pInterpret" hidden>Interpréter avec Claude</button></div>
-            <div class="chips" id="pUnderstood" aria-live="polite"></div>
-          </div>
-          <div class="mode">
-            <h3>Dessin libre par Claude</h3>
-            <p class="hint" id="drawHelp">Claude dessine un SVG neuf dans le même style, pour ce qui sort du catalogue du moteur. Le SVG obtenu est le code à conserver.</p>
-            <div class="row"><button class="primary" id="pDraw" hidden>Dessiner avec Claude</button><button id="pStop" hidden>Arrêter</button></div>
-            <p class="wait" id="pStatus" role="status"></p>
-            <div id="claudeOut" hidden>
-              <img id="claudeImg" alt="Illustration dessinée par Claude à partir du prompt">
-              <div class="row" style="margin-top:8px"><button id="cCopy">Copier le SVG</button><button id="cHtml">Copier en page HTML</button><button id="cDl" hidden>Télécharger</button><button id="cRedo">Autre version</button></div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div id="pngOut" class="pngout" hidden></div>
 
       <div class="cols">
         <section class="panel" aria-labelledby="tTitle">
@@ -207,8 +224,8 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
   // ----- Capacités de la page (Claude, téléchargements) -----
   let sample = null, downloads = null;
   const use = (name) => (window.claude && window.claude.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null));
-  use('sample').then((s) => { sample = s; $('pInterpret').hidden = !s; $('pDraw').hidden = !s; if (!s) $('drawHelp').textContent = 'Le dessin par Claude n\'est pas disponible dans cette vue. Le moteur, lui, fonctionne partout.'; });
-  use('downloads').then((d) => { downloads = d; $('dlCode').hidden = !d; $('cDl').hidden = !d; });
+  use('sample').then((s) => { sample = s; $('pInterpret').hidden = !s; if (!s) $('gHelp').insertAdjacentHTML('beforeend', ' <strong>Dans cette vue, Claude n\'est pas joignable : ouvre la page dans claude.ai pour générer de nouvelles images.</strong>'); });
+  use('downloads').then((d) => { downloads = d; ['dlCode', 'gDl', 'gDlCode'].forEach((id) => { $(id).hidden = !d; }); });
   async function save(filename, data) {
     if (!downloads) return;
     try { await downloads.save({ filename, data }); } catch (e) { if (e && e.code !== 'cancelled' && e.code !== 'declined') toast('Téléchargement impossible ici : utilise la copie.'); }
@@ -366,12 +383,120 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
     }
   }
 
-  // ----- Prompt → visuel -----
+  // ----- Prompt → image -----
+  const EXAMPLES = /*__EXAMPLES__*/[];
   const pBox = $('prompt');
+  const normP = (s) => String(s).replace(/\s+/g, ' ').trim().toLowerCase();
+  let gen = null, gTab = 'html', hist = [];
+  try { hist = JSON.parse(localStorage.getItem('tvp-gen-hist') || '[]'); } catch (e) { hist = []; }
   try { pBox.value = localStorage.getItem('tvp-prompt') || ''; } catch (e) {}
-  if (!pBox.value) pBox.value = 'Une cheffe avec une toque tenant une spatule, à côté d\'un gâteau, confettis, palette menthe';
+  if (!pBox.value && EXAMPLES[0]) pBox.value = EXAMPLES[0].prompt;
   pBox.oninput = () => { try { localStorage.setItem('tvp-prompt', pBox.value); } catch (e) {} };
   $('pFill').onclick = () => { pBox.value = TVP.toPrompt(current.trace); pBox.oninput(); pBox.focus(); };
+  EXAMPLES.forEach((ex) => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = 'Exemple : ' + ex.title; b.onclick = () => { pBox.value = ex.prompt; pBox.oninput(); showGen({ svg: ex.svg, prompt: ex.prompt, mode: 'exemple dessiné à l\'avance' }, false); }; $('examples').appendChild(b); });
+
+  const svgUri = (svg) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  const pageFor = (g) => '<!doctype html>\n<html lang="fr">\n<meta charset="utf-8">\n<title>Image générée</title>\n<style>body{margin:0;background:#111;display:grid;place-items:center;min-height:100vh}svg{width:min(100vw,1600px);height:auto}</style>\n<!-- Prompt :\n' + g.prompt.replace(/--/g, '—') + '\n-->\n' + g.svg + '\n</html>\n';
+  const G_TABS = [['html', 'Page HTML'], ['svg', 'SVG'], ['prompt', 'Prompt']];
+  G_TABS.forEach(([id, label]) => { const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.id = 'gtab-' + id; b.textContent = label; b.onclick = () => { gTab = id; renderGenCode(); }; $('gTabs').appendChild(b); });
+  function genCode() { if (!gen) return ''; return gTab === 'html' ? pageFor(gen) : gTab === 'svg' ? gen.svg + '\n' : gen.prompt + '\n'; }
+  function renderGenCode() {
+    G_TABS.forEach(([id]) => { const b = $('gtab-' + id); b.setAttribute('aria-selected', String(id === gTab)); b.tabIndex = id === gTab ? 0 : -1; });
+    const txt = genCode();
+    $('gCode').innerHTML = esc(txt.length > 6000 ? txt.slice(0, 6000) + '\n… (' + Math.round(txt.length / 1024) + ' Ko au total, copiés en entier)' : txt).replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="c">$1</span>');
+  }
+  function renderHist() {
+    const box = $('gHist'); box.innerHTML = '';
+    if (!hist.length) { box.innerHTML = '<p class="hint">Aucune image générée pour l\'instant.</p>'; return; }
+    hist.forEach((h) => {
+      const b = document.createElement('button'); b.className = 'thumb'; b.setAttribute('aria-label', 'Revoir : ' + h.prompt.slice(0, 60));
+      b.innerHTML = '<img alt="" src="' + svgUri(h.svg) + '" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block"><span>' + esc(h.prompt.replace(/\s+/g, ' ').slice(0, 40)) + '</span>';
+      b.onclick = () => { pBox.value = h.prompt; pBox.oninput(); showGen(h, false); };
+      box.appendChild(b);
+    });
+  }
+  function showGen(g, remember) {
+    gen = g;
+    $('gImg').src = svgUri(g.svg);
+    $('gMode').textContent = g.mode;
+    $('pStatus').textContent = Math.round(g.svg.length / 1024) + ' Ko';
+    $('gPngOut').hidden = true;
+    renderGenCode();
+    if (remember) {
+      hist = [{ svg: g.svg, prompt: g.prompt, mode: g.mode }].concat(hist.filter((h) => h.svg !== g.svg)).slice(0, 6);
+      try { localStorage.setItem('tvp-gen-hist', JSON.stringify(hist)); } catch (e) { hist = hist.slice(0, 3); try { localStorage.setItem('tvp-gen-hist', JSON.stringify(hist)); } catch (e2) {} }
+      renderHist();
+    }
+  }
+
+  // SVG assaini : ni script, ni gestionnaire d'évènement, ni ressource externe. Affiché via <img>.
+  function sanitizeSvg(src) {
+    const m = String(src).match(/<svg[\s\S]*<\/svg>/i); if (!m) return '';
+    const doc = new DOMParser().parseFromString(m[0], 'image/svg+xml');
+    const root = doc.documentElement; if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) return '';
+    root.querySelectorAll('script,foreignObject,iframe,image,a,animate,set,animateTransform,animateMotion').forEach((el) => el.remove());
+    root.querySelectorAll('style').forEach((el) => { if (/@import|url\(\s*['"]?(?!#)/i.test(el.textContent)) el.remove(); });
+    [root, ...root.querySelectorAll('*')].forEach((el) => { [...el.attributes].forEach((a) => { if (/^on/i.test(a.name) || (/href$/i.test(a.name) && !/^#/.test(a.value)) || /url\(\s*['"]?(?!#)/i.test(a.value)) el.removeAttribute(a.name); }); });
+    root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    if (!root.getAttribute('viewBox')) root.setAttribute('viewBox', '0 0 ' + (parseFloat(root.getAttribute('width')) || 1600) + ' ' + (parseFloat(root.getAttribute('height')) || 900));
+    root.removeAttribute('width'); root.removeAttribute('height');
+    return new XMLSerializer().serializeToString(root);
+  }
+  // Rendu progressif : ferme les balises encore ouvertes du SVG en cours d'écriture.
+  function partialSvg(text) {
+    const i = text.search(/<svg[\s>]/i); if (i < 0) return '';
+    let body = text.slice(i); const last = body.lastIndexOf('>'); if (last < 0) return '';
+    body = body.slice(0, last + 1);
+    if (/<\/svg>/i.test(body)) return body;
+    const stack = []; const re = /<(\/?)([a-zA-Z][\w:-]*)[^>]*?(\/?)>/g; let m;
+    while ((m = re.exec(body))) { if (m[1]) stack.pop(); else if (!m[3]) stack.push(m[2]); }
+    return body + stack.reverse().map((t) => '</' + t + '>').join('');
+  }
+
+  let drawCtl = null;
+  async function drawWithClaude(text) {
+    drawCtl = new AbortController();
+    $('gGo').disabled = true; $('pStop').hidden = false;
+    $('gMode').textContent = 'Claude dessine'; $('pStatus').textContent = 'Claude réfléchit…';
+    const prompt = 'Tu es illustrateur vectoriel. Dessine en SVG l\'image décrite par ce prompt, aussi fidèlement que possible :\n\n<<<\n' + text.slice(0, 8000) + '\n>>>\n\n' +
+      'Consignes techniques :\n- Un seul élément <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"> (16:9), sans width ni height.\n- Respecte la composition, le cadrage et chaque élément demandés ; utilise exactement les couleurs hex du prompt quand il en donne, et des teintes cohérentes sinon.\n- Construis par plans, du fond au premier plan : ciel et lointain, plans intermédiaires, sujet principal détaillé et reconnaissable, premier plan qui recouvre ce qui doit être caché.\n- Style illustration plate : formes géométriques nettes, aplats superposés, opacités pour la profondeur, dégradés seulement si le prompt les autorise. Regroupe avec <g transform="…"> pour les éléments inclinés ou répétés.\n- Aucun texte, aucune image externe, aucun script, aucun lien.\n- Écris d\'abord le fond, puis les détails, pour que l\'image se lise pendant qu\'elle s\'écrit. Reste sous 45 000 caractères.\n\nRéponds uniquement avec le code <svg>…</svg>.';
+    let lastPaint = 0, painted = '';
+    try {
+      const { text: out, truncated } = await sample(prompt, {
+        signal: drawCtl.signal, cache: false, modelTier: $('gHq').checked ? 'complex' : 'default',
+        onText: ({ text: t }) => {
+          $('pStatus').textContent = 'Dessin en cours… ' + t.length.toLocaleString('fr-FR') + ' caractères';
+          const now = Date.now(); if (now - lastPaint < 450) return; lastPaint = now;
+          const part = sanitizeSvg(partialSvg(t)); if (part && part !== painted) { painted = part; $('gImg').src = svgUri(part); }
+        }
+      });
+      let clean = sanitizeSvg(out);
+      if (!clean && truncated) clean = sanitizeSvg(partialSvg(out));
+      if (!clean) { $('pStatus').textContent = 'Claude n\'a pas renvoyé de SVG lisible. Réessaie.'; $('gMode').textContent = 'échec'; }
+      else showGen({ svg: clean, prompt: text, mode: 'dessiné par Claude' + (truncated ? ' (coupé avant la fin)' : '') }, true);
+    } catch (e) {
+      if (e && e.code === 'cancelled') { if (painted) showGen({ svg: painted, prompt: text, mode: 'dessin arrêté' }, false); $('pStatus').textContent = 'Dessin arrêté.'; }
+      else { $('pStatus').textContent = errMsg(e); $('gMode').textContent = 'échec'; if (gen) $('gImg').src = svgUri(gen.svg); }
+      if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) { sample = null; $('pInterpret').hidden = true; }
+    }
+    $('gGo').disabled = false; $('pStop').hidden = true; drawCtl = null;
+  }
+  $('pStop').onclick = () => drawCtl && drawCtl.abort();
+
+  $('gGo').onclick = () => {
+    const text = pBox.value.trim(); if (!text) { toast('Écris d\'abord un prompt.'); pBox.focus(); return; }
+    // Prompt calibré de l'atelier : le moteur redonne l'image exacte.
+    if (/\bseed\s*:\s*"/i.test(text) && /\bgenre\s*:/i.test(text)) {
+      const o = TVP.parsePrompt(text); applyOpts(o, false); understood(o, 'Prompt calibré, compris par le moteur :');
+      showGen({ svg: stripDims(TVP.render(Object.assign({}, o, { size: 0 })).svg), prompt: text, mode: 'moteur, image exacte' }, true);
+      return;
+    }
+    const ex = EXAMPLES.find((x) => normP(x.prompt) === normP(text));
+    if (sample) { drawWithClaude(text); return; }
+    if (ex) { showGen({ svg: ex.svg, prompt: ex.prompt, mode: 'exemple dessiné à l\'avance' }, false); toast('Exemple affiché. La génération de nouvelles images demande la page ouverte dans claude.ai.'); return; }
+    $('gMode').textContent = 'indisponible';
+    $('pStatus').textContent = 'Le dessin d\'un prompt libre passe par Claude : ouvre cette page dans claude.ai et autorise-la à utiliser Claude.';
+  };
 
   function understood(o, source) {
     const ov = o.overrides || {}, out = [];
@@ -383,11 +508,11 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
     tag('graine', o.seed);
     $('pUnderstood').innerHTML = '<span class="hint" style="flex-basis:100%">' + source + '</span>' + out.join('');
   }
-  function applyOpts(o) {
+  function applyOpts(o, scroll) {
     state.genre = o.genre; state.subgenre = o.subgenre || ''; state.seed = o.seed; state.palette = o.palette || '';
     state.overrides = o.overrides || null;
     syncInputs(); update();
-    $('preview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (scroll !== false) $('preview').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
   $('pEngine').onclick = () => {
     const text = pBox.value.trim(); if (!text) { toast('Écris d\'abord un prompt.'); return; }
@@ -395,7 +520,7 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
     applyOpts(o); understood(o, 'Compris par le moteur :');
   };
 
-  // Interprétation par Claude : le prompt libre devient des réglages du catalogue.
+  // Interprétation par Claude : le prompt libre devient des réglages du catalogue du moteur.
   const SAMPLE_ERR = { not_granted: 'Accès à Claude refusé pour cette page.', sampling_disabled: 'Claude n\'est pas disponible pour ce compte.', rate_limited: 'Trop de demandes : réessaie dans un moment.', refused: 'Claude a refusé ce prompt : reformule-le.', invalid_json: 'Réponse illisible : réessaie.', session_expired: 'Session expirée : reconnecte-toi.' };
   const errMsg = (e) => SAMPLE_ERR[e && e.code] || 'Claude n\'a pas pu répondre. Réessaie.';
   function catalogText() {
@@ -434,55 +559,15 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
         'Réponds uniquement avec un objet JSON de cette forme : {"genre":"cuisine","subgenre":"","palette":"menthe ou vide","overrides":{"scene":"","composition":"","prop":"","accessory":"","decor":"","character":{"variant":"fem","armLeft":"wave","headwear":"toque","handheld":"spatula"},"character2":{}}} en omettant les champs non demandés.\n\nDescription :\n' + text.slice(0, 4000), { modelTier: 'quick' });
       const o = cleanClaude(r || {}, text);
       applyOpts(o); understood(o, 'Interprété par Claude :');
-    } catch (e) { if (e && e.code !== 'cancelled') toast(errMsg(e)); if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) { $('pInterpret').hidden = true; $('pDraw').hidden = true; } }
+    } catch (e) { if (e && e.code !== 'cancelled') toast(errMsg(e)); if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) { sample = null; $('pInterpret').hidden = true; } }
     btn.disabled = false; btn.textContent = 'Interpréter avec Claude';
   };
 
-  // Dessin libre par Claude : un SVG neuf, assaini et affiché comme image.
-  let drawCtl = null, claudeSvg = '';
-  function sanitizeSvg(src) {
-    const m = String(src).match(/<svg[\s\S]*<\/svg>/i); if (!m) return '';
-    const doc = new DOMParser().parseFromString(m[0], 'image/svg+xml');
-    const root = doc.documentElement; if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) return '';
-    root.querySelectorAll('script,foreignObject,iframe,image,use,style,a,animate,set').forEach((n) => n.remove());
-    [root, ...root.querySelectorAll('*')].forEach((el) => { [...el.attributes].forEach((a) => { if (/^on/i.test(a.name) || /href$/i.test(a.name) || /url\(\s*['"]?(?!#)/i.test(a.value)) el.removeAttribute(a.name); }); });
-    root.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); root.setAttribute('viewBox', '0 0 320 180'); root.removeAttribute('width'); root.removeAttribute('height');
-    return new XMLSerializer().serializeToString(root);
-  }
-  async function draw() {
-    const text = pBox.value.trim(); if (!text || !sample) return;
-    drawCtl = new AbortController();
-    $('pDraw').disabled = true; $('pStop').hidden = false; $('pStatus').textContent = 'Claude réfléchit…';
-    const ref = stripDims(TVP.render(Object.assign(TVP.parsePrompt(text), { size: 0 })).svg);
-    const pal = TVP.render(TVP.parsePrompt(text)).trace.colors;
-    const prompt = 'Dessine une illustration SVG d\'émission de télévision d\'après cette description :\n\n' + text.slice(0, 4000) +
-      '\n\nCharte graphique : illustration vectorielle plate, sans dégradé ni texture, formes géométriques arrondies. Toile 320×180, viewBox="0 0 320 180". Horizon vers y=110-125, sol à y=162. Un ou deux personnages « mascotte » d\'environ 110 de haut (pieds à y=162), tête ronde (rayon 11) sans nez, yeux en points, joues rosées (accentAlt à 30 %), corps simple, baskets blanches ; un objet emblématique au premier plan. Traits fins seulement pour les détails (1 à 2 px, couleur ink, extrémités arrondies). Ombres portées en ellipse ink à 12 %, voiles à 7-40 % d\'opacité, reflets light à 85 %. Couleurs : sky #' + pal.sky + ', skyAlt #' + pal.skyAlt + ', ground #' + pal.ground + ', groundAlt #' + pal.groundAlt + ', accent #' + pal.accent + ', accentAlt #' + pal.accentAlt + ', ink #' + pal.ink + ', light #' + pal.light + ' ; peau, cheveux et vêtements libres (vêtement jamais de la couleur accent). Aucun texte, aucune image externe, aucun script, pas de dégradé ni de filtre.\n\n' +
-      'Voici une illustration de référence produite par le moteur dans ce style (même toile, mêmes conventions) ; inspire-toi de ses proportions et de sa construction, sans la recopier :\n' + ref.slice(0, 60000) +
-      '\n\nRéponds uniquement avec le code <svg>…</svg> complet, moins de 25 000 caractères.';
-    let shown = false;
-    try {
-      const { text: out, truncated } = await sample(prompt, { signal: drawCtl.signal, cache: false, onText: ({ text: t }) => { if (!shown) { shown = true; } $('pStatus').textContent = 'Dessin en cours… ' + t.length.toLocaleString('fr-FR') + ' caractères'; } });
-      const clean = sanitizeSvg(out);
-      if (!clean) { $('pStatus').textContent = truncated ? 'Le dessin a été coupé avant la fin. Simplifie la description et réessaie.' : 'Claude n\'a pas renvoyé de SVG lisible. Réessaie.'; }
-      else {
-        claudeSvg = clean;
-        $('claudeImg').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(clean);
-        $('claudeOut').hidden = false;
-        $('pStatus').textContent = 'Dessin terminé (' + Math.round(clean.length / 1024) + ' Ko). Chaque demande donne une version différente : garde le SVG pour le reproduire.';
-      }
-    } catch (e) {
-      $('pStatus').textContent = e && e.code === 'cancelled' ? 'Dessin arrêté.' : errMsg(e);
-      if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) { $('pInterpret').hidden = true; $('pDraw').hidden = true; }
-    }
-    $('pDraw').disabled = false; $('pStop').hidden = true; drawCtl = null;
-  }
-  $('pDraw').onclick = draw;
-  $('cRedo').onclick = draw;
-  $('pStop').onclick = () => drawCtl && drawCtl.abort();
-  const claudeHtml = () => '<!doctype html>\n<html lang="fr">\n<meta charset="utf-8">\n<title>Visuel dessiné par Claude</title>\n<style>body{margin:0;background:#111;display:grid;place-items:center;min-height:100vh}svg{width:min(100vw,1280px);height:auto}</style>\n' + claudeSvg + '\n</html>\n';
-  $('cCopy').onclick = () => copy(claudeSvg, 'SVG copié');
-  $('cHtml').onclick = () => copy(claudeHtml(), 'Page HTML copiée');
-  $('cDl').onclick = () => save('visuel-claude.svg', new Blob([claudeSvg], { type: 'image/svg+xml' }));
+  $('gCopySvg').onclick = () => gen && copy(gen.svg, 'SVG copié');
+  $('gCopyCode').onclick = () => gen && copy(genCode(), 'Code copié');
+  $('gDl').onclick = () => gen && save('image-prompt.svg', new Blob([gen.svg], { type: 'image/svg+xml' }));
+  $('gDlCode').onclick = () => gen && save({ html: 'image-prompt.html', svg: 'image-prompt.svg', prompt: 'prompt.txt' }[gTab], new Blob([genCode()], { type: gTab === 'html' ? 'text/html' : 'text/plain' }));
+  $('gPng').onclick = () => gen && pngExport(gen.svg, 1920, $('gPngOut'), 'image-prompt.png');
 
   // ----- Actions -----
   let toastT;
@@ -495,20 +580,23 @@ footer { color: var(--muted); font-size: 12.5px; max-width: 80ch }
   $('dlCode').onclick = () => { const [name, type] = FILES[tab]; save(tab === 'svg' ? baseName() + '.svg' : name, new Blob([codeFor(tab, true)], { type: type || 'text/plain' })); };
   $('copySvg').onclick = () => copy(current.svg, 'SVG copié');
   $('copyLink').onclick = () => copy(codeFor('json', true), 'Recette copiée');
-  $('makePng').onclick = () => {
-    const w = +state.size > 0 ? Math.round(+state.size) : 1280, h = Math.round((w * 9) / 16);
+  function pngExport(svg, w, out, name) {
+    const vb = svg.match(/viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/) || [0, 16, 9];
+    const h = Math.round((w * +vb[2]) / +vb[1]);
     const img = new Image();
     img.onload = () => {
       const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
-      const url = cv.toDataURL('image/png'); const out = $('pngOut');
-      out.innerHTML = '<p class="hint">PNG ' + w + '×' + h + ' : clic droit ou appui long sur l\'image, puis « Enregistrer l\'image ».</p><img alt="Visuel exporté en PNG" src="' + url + '"><div class="row"><button id="copyPng">Copier le PNG</button>' + (downloads ? '<button id="dlPng">Télécharger le PNG</button>' : '') + '</div>';
+      out.innerHTML = '<p class="hint">PNG ' + w + '×' + h + ' : clic droit ou appui long sur l\'image, puis « Enregistrer l\'image ».</p><img alt="Image exportée en PNG" src="' + cv.toDataURL('image/png') + '"><div class="row"><button data-act="copy">Copier le PNG</button>' + (downloads ? '<button data-act="dl">Télécharger le PNG</button>' : '') + '</div>';
       out.hidden = false;
-      $('copyPng').onclick = () => { cv.toBlob((blob) => { try { navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => toast('PNG copié'), () => toast('Copie d\'image refusée ici : enregistre l\'image.')); } catch (e) { toast('Copie d\'image refusée ici : enregistre l\'image.'); } }); };
-      if (downloads) $('dlPng').onclick = () => cv.toBlob((blob) => save(baseName() + '.png', blob));
+      out.querySelector('[data-act=copy]').onclick = () => { cv.toBlob((blob) => { try { navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => toast('PNG copié'), () => toast('Copie d\'image refusée ici : enregistre l\'image.')); } catch (e) { toast('Copie d\'image refusée ici : enregistre l\'image.'); } }); };
+      const dl = out.querySelector('[data-act=dl]'); if (dl) dl.onclick = () => cv.toBlob((blob) => save(name, blob));
     };
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(stripDims(current.svg).replace('<svg ', '<svg width="' + w + '" height="' + h + '" '));
-  };
+    img.src = svgUri(stripDims(svg).replace('<svg ', '<svg width="' + w + '" height="' + h + '" '));
+  }
+  $('makePng').onclick = () => pngExport(current.svg, +state.size > 0 ? Math.round(+state.size) : 1280, $('pngOut'), baseName() + '.png');
 
   syncInputs(); update();
+  renderHist();
+  { const ex = EXAMPLES.find((x) => normP(x.prompt) === normP(pBox.value)) || EXAMPLES[0]; if (hist[0] && hist[0].prompt === pBox.value) showGen(hist[0], false); else if (ex) showGen({ svg: ex.svg, prompt: ex.prompt, mode: 'exemple dessiné à l\'avance' }, false); }
 })();
 </script>
